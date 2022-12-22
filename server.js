@@ -4,13 +4,16 @@ const PORT = 5000;
 const color = require("colors");
 const Databse = require("./db/connection");
 const txnSchema = require("./models/transcation");
-const loginSchema = require("./models/login");
+const ragisterSchema = require("./models/ragister");
+const bcrypt = require("bcrypt");
+const cors = require("cors");
 
 // connection to db
 Databse();
 
 // middleware
 app.use(express.json());
+app.use(cors())
 
 app.get("/users", (req, res) => {
   res.send({
@@ -19,28 +22,52 @@ app.get("/users", (req, res) => {
   });
 });
 
-// login and ragister
-app.post("/login", async (req, res) => {
-  let { email, password } = req.body;
+//  Ragister
+app.post("/ragister", async (req, res) => {
+  let { name, email, mobile, password } = req.body;
 
-  try {
-    let founded = await loginSchema.find({ email });
-
-    console.log(founded.length);
-
-    if (founded.length > 0) {
-      res.send({ status: "Ok", msg: "successgully Founded", data: founded });
+  bcrypt.hash(password, 10, async (err, hashPass) => {
+    if (err) {
+      res.send({
+        status: "Ok",
+        msg: "password hash is not genrated",
+        data: err,
+      });
     } else {
       try {
-        let ragistered = await loginSchema.create({ email, password });
-        res.send({ status: "Ok", msg: "successgully login", data: ragistered });
+        let foundedData = await ragisterSchema.find({ email });
+
+        if (foundedData.length > 0) {
+          res.send({
+            status: "Ok",
+            msg: "you have to login...",
+            data: foundedData,
+          });
+        } else {
+          try {
+            let savedData = await ragisterSchema.create({
+              name,
+              email,
+              mobile,
+              password: hashPass,
+            });
+            res.send({
+              status: "Ok",
+              msg: "Successfully Ragistered",
+              data: savedData,
+            });
+          } catch (err) {
+            res.send({ status: "err", msg: "network problem" });
+          }
+        }
       } catch (err) {
-        res.send({ status: "err", msg: "network problem" });
+        res.send({
+          status: "err",
+          msg: "network problem",
+        });
       }
     }
-  } catch (err) {
-    res.send({ status: "err", msg: "network problem from found" });
-  }
+  });
 });
 
 // txn save
